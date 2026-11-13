@@ -12,13 +12,14 @@ trap 'rm -rf "$work"' EXIT
 weave_src="${WEAVE_SOURCE:-}"
 if [ -z "$weave_src" ]; then
   weave_ref="${WEAVE_REF:-main}"
-  git clone --quiet --depth 1 --branch "$weave_ref" https://github.com/prulloac/weave.git "$work/weave"
-  weave_src="$work/weave"
+  git clone --quiet --depth 1 --branch "$weave_ref" https://github.com/prulloac/weave.git "$work/weave-src"
+  weave_src="$work/weave-src"
 fi
 
-(cd "$weave_src" && go build -o "$work/weave" ./cmd/weave)
-go build -o "$work/weave-git" .
-export PATH="$work:$PATH"
+mkdir -p "$work/bin"
+(cd "$weave_src" && go build -o "$work/bin/weave" ./cmd/weave)
+go build -o "$work/bin/weave-git" .
+export PATH="$work/bin:$PATH"
 export WEAVE_CACHE_DIR="$work/cache"
 
 mkdir -p "$work/repo"
@@ -37,15 +38,15 @@ mkdir -p "$work/repo"
 )
 branch="$(cat "$work/branch")"
 
-result="$("$work/weave" ingest "git+file://$work/bare.git" --git --ref "$branch" --db "$work/index.db" --json)"
+result="$("$work/bin/weave" ingest "git+file://$work/bare.git" --git --ref "$branch" --db "$work/index.db" --json)"
 printf '%s\n' "$result"
 printf '%s' "$result" | grep -q '"ok":true'
 
 workspace="$work/workspace"
-"$work/weave" workspace init "$workspace" --json >/dev/null
-"$work/weave" source add core "git+file://$work/bare.git" --git --ref "$branch" --workspace "$workspace" --json >/dev/null
-"$work/weave" ingest --workspace "$workspace" --json >/dev/null
-sources="$("$work/weave" source list --workspace "$workspace" --json)"
+"$work/bin/weave" workspace init "$workspace" --json >/dev/null
+"$work/bin/weave" source add core "git+file://$work/bare.git" --git --ref "$branch" --workspace "$workspace" --json >/dev/null
+"$work/bin/weave" ingest --workspace "$workspace" --json >/dev/null
+sources="$("$work/bin/weave" source list --workspace "$workspace" --json)"
 printf '%s\n' "$sources"
 printf '%s' "$sources" | grep -q '"provider":"git"'
 printf '%s' "$sources" | grep -q '"commit":"'
