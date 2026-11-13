@@ -34,3 +34,14 @@ jobs:
         run: test -z "$(gofmt -l .)"
       - name: Build
         run: go build ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and ingest with real binaries
+        run: ./scripts/integration.sh

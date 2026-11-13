@@ -87,6 +87,7 @@ go build -o weave-git .
 go test ./...
 go vet ./...
 ./scripts/verify.sh
+WEAVE_SOURCE=../weave ./scripts/integration.sh
 ```
 
 Contract:

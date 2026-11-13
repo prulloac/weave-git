@@ -14,6 +14,7 @@ Weave packages and never parses source code.
 - Version: `go run . --version`
 - Cache GC: `go run . gc --cache-dir <dir> [--keep <source-id> ...] [--dry-run] [--json]`
 - Full gate: `./scripts/verify.sh`
+- Cross-repo integration: `WEAVE_SOURCE=../weave ./scripts/integration.sh`
 - User-level install: `./scripts/install.sh --help` (or `scripts/install.ps1` on Windows)
 
 ## Layout
@@ -23,7 +24,7 @@ main.go                 CLI, describe/version and source request entrypoint
 internal/source/        weave.source/v1 wire types
 internal/provider/      local and remote git resolution, bare mirrors and snapshot materialization
 docs/bdd/               extension-side behavior scenarios
-scripts/                verification
+scripts/                verification, installers and cross-repository integration
 ```
 
 ## Invariants
