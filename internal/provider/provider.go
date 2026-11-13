@@ -28,61 +28,59 @@ type state struct {
 	URI    string `json:"uri,omitempty"`
 }
 
-// Materialize resolves a local git source into a read-only worktree.
+// Materialize resolves a local or remote git source into a read-only worktree.
 func Materialize(request source.Request) (source.Response, error) {
 	if !sourceIDPattern.MatchString(request.SourceID) {
 		return source.Response{}, fmt.Errorf("invalid source_id %q", request.SourceID)
 	}
-	root, err := localRoot(request.URI)
+	loc, err := parseLocation(request.URI)
 	if err != nil {
 		return source.Response{}, err
 	}
-	commit, err := resolveCommit(root, request.Ref)
-	if err != nil {
-		return source.Response{}, err
+	request.URI = loc.URI
+	if loc.Remote && request.Options.Worktree {
+		return source.Response{}, errors.New("worktree mode requires a local repository")
 	}
-	repository, warnings := describeRepository(root)
+	warnings := make([]string, 0)
+	archiveRoot := loc.Path
+	var commit string
+	if loc.Remote {
+		var remoteWarnings []string
+		commit, archiveRoot, remoteWarnings, err = resolveRemote(request, loc)
+		if err != nil {
+			return source.Response{}, err
+		}
+		warnings = append(warnings, remoteWarnings...)
+	} else {
+		commit, err = resolveCommit(loc.Path, request.Ref)
+		if err != nil {
+			return source.Response{}, err
+		}
+	}
 	if request.Options.Worktree {
-		dirty, _ := isDirty(root)
+		repository, repositoryWarnings := describeRepository(loc.Path, loc.Name)
+		warnings = append(warnings, repositoryWarnings...)
+		dirty, _ := isDirty(loc.Path)
 		if dirty {
 			warnings = append(warnings, "working tree has uncommitted changes")
 		}
-		return response(request, root, commit, false, repository, warnings), nil
+		return response(request, loc, loc.Path, commit, false, repository, warnings), nil
 	}
 	if strings.TrimSpace(request.CacheDir) == "" {
 		return source.Response{}, errors.New("cache_dir is required")
 	}
-	worktree, warnings, err := materialize(request, root, commit, warnings)
+	worktree, materializeWarnings, err := materialize(request, archiveRoot, commit, warnings)
 	if err != nil {
 		return source.Response{}, err
 	}
-	return response(request, worktree, commit, true, repository, warnings), nil
-}
-
-func localRoot(uri string) (string, error) {
-	value := strings.TrimSpace(uri)
-	if strings.HasPrefix(value, "git+file://") {
-		value = strings.TrimPrefix(value, "git+file://")
-	} else if strings.HasPrefix(value, "file://") {
-		value = strings.TrimPrefix(value, "file://")
-	} else if strings.Contains(value, "://") || strings.Contains(value, "@") && strings.Contains(value, ":") {
-		return "", fmt.Errorf("remote git sources are not implemented yet: %s", uri)
+	warnings = materializeWarnings
+	repository, repositoryWarnings := describeRepository(worktree, loc.Name)
+	warnings = append(warnings, repositoryWarnings...)
+	if loc.Remote {
+		repository.Host = loc.Host
+		repository.Owner = loc.Owner
 	}
-	if value == "" {
-		return "", errors.New("source uri is required")
-	}
-	absolute, err := filepath.Abs(value)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(absolute)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("source is not a directory: %s", absolute)
-	}
-	return absolute, nil
+	return response(request, loc, worktree, commit, true, repository, warnings), nil
 }
 
 func resolveCommit(root, ref string) (string, error) {
@@ -97,7 +95,7 @@ func resolveCommit(root, ref string) (string, error) {
 }
 
 func materialize(request source.Request, root, commit string, warnings []string) (string, []string, error) {
-	base := filepath.Join(request.CacheDir, "sources", request.SourceID)
+	base := sourceBase(request)
 	worktree := filepath.Join(base, "worktree")
 	stage := filepath.Join(base, fmt.Sprintf("worktree.stage-%d", os.Getpid()))
 	if err := os.MkdirAll(base, 0o755); err != nil {
@@ -137,12 +135,8 @@ func materialize(request source.Request, root, commit string, warnings []string)
 }
 
 func stateMatches(worktree, commit string) bool {
-	data, err := os.ReadFile(filepath.Join(filepath.Dir(worktree), "state.json"))
-	if err != nil {
-		return false
-	}
-	var value state
-	if json.Unmarshal(data, &value) != nil {
+	value, ok := readState(filepath.Dir(worktree))
+	if !ok {
 		return false
 	}
 	if value.Commit != commit {
@@ -223,8 +217,11 @@ func escapes(root, link, target string) bool {
 	return err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative)
 }
 
-func describeRepository(root string) (source.Repository, []string) {
-	name := filepath.Base(root)
+func describeRepository(root, fallbackName string) (source.Repository, []string) {
+	name := fallbackName
+	if strings.TrimSpace(name) == "" {
+		name = filepath.Base(root)
+	}
 	repository := source.Repository{ID: "_repo", Name: name, Title: name}
 	warnings := make([]string, 0)
 	readme, ok := findReadme(root)
@@ -355,7 +352,7 @@ func firstParagraph(body string) string {
 	return text
 }
 
-func response(request source.Request, path, commit string, readOnly bool, repository source.Repository, warnings []string) source.Response {
+func response(request source.Request, loc location, path, commit string, readOnly bool, repository source.Repository, warnings []string) source.Response {
 	return source.Response{
 		V:    source.ProtocolVersion,
 		Type: "source_response",
@@ -364,7 +361,7 @@ func response(request source.Request, path, commit string, readOnly bool, reposi
 			SourceID: request.SourceID,
 			Commit:   commit,
 			Ref:      request.Ref,
-			URI:      request.URI,
+			URI:      loc.URI,
 			ReadOnly: readOnly,
 		},
 		Repository: repository,
@@ -386,11 +383,17 @@ func git(root string, args ...string) (string, error) {
 }
 
 func gitBytes(root string, args ...string) ([]byte, error) {
-	command := exec.Command("git", append([]string{"-C", root}, args...)...)
+	invocation := args
+	if root != "" {
+		invocation = append([]string{"-C", root}, args...)
+	}
+	command := exec.Command("git", invocation...)
+	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	data, err := command.Output()
 	if err != nil {
 		if exit, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(exit.Stderr)))
+			message := redactCredentials(strings.TrimSpace(string(exit.Stderr)))
+			return nil, fmt.Errorf("git %s: %s", redactCredentials(strings.Join(invocation, " ")), message)
 		}
 		return nil, err
 	}

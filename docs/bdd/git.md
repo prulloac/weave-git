@@ -1,7 +1,7 @@
 ---
 type: behavior
 title: "Weave Git Provider Behavior"
-description: "Extension-side scenarios for local git snapshot materialization, ref resolution, stable worktrees and repository metadata."
+description: "Extension-side scenarios for local and remote git snapshot materialization, ref resolution, stable worktrees, offline cache reuse and repository metadata."
 status: draft
 ---
 
@@ -53,12 +53,46 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **Then** the provider returns the local checkout
 - **And** it warns that the worktree is dirty
 
-### Scenario: Remote sources are deferred
+## Feature: Remote sources
 
-- **Given** a `git+https://` source URI
-- **When** the local provider slice handles it
-- **Then** the request fails clearly
-- **And** no network operation is attempted
+### Scenario: A remote repository becomes a commit-pinned snapshot
+
+- **Given** a remote git URI in HTTPS, SSH, SCP-like or `file://` form
+- **When** the provider receives a source request
+- **Then** it fetches into a bare mirror under `$WEAVE_CACHE_DIR/git`
+- **And** it resolves the requested ref to a full commit
+- **And** it materializes the stable worktree from that commit
+
+### Scenario: Remote worktree mode is invalid
+
+- **Given** a remote git URI
+- **When** the request sets `worktree: true`
+- **Then** the provider fails clearly
+- **And** it does not return the mirror or cache as a mutable checkout
+
+### Scenario: An offline remote reuses the cached commit
+
+- **Given** a remote source that was materialized before
+- **When** the remote is unreachable
+- **And** the request is permissive
+- **Then** the provider reuses the cached commit
+- **And** it returns a warning naming the cached commit
+- **And** the worktree path does not change
+
+### Scenario: A strict offline remote fails
+
+- **Given** a remote source that was materialized before
+- **When** the remote is unreachable
+- **And** the request is strict
+- **Then** the provider fails
+- **And** it does not silently fall back to another ref
+
+### Scenario: Credentials are never echoed
+
+- **Given** a remote URI containing a password or token
+- **When** a fetch fails
+- **Then** the error redacts the userinfo
+- **And** the URI written to provenance contains no password
 
 ## Feature: Repository metadata
 

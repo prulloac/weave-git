@@ -1,7 +1,7 @@
 # Weave Git Source Provider
 
-`weave-git` resolves local git repositories into commit-pinned snapshots for Weave. It is the first
-source-provider extension and speaks `weave.source/v1`.
+`weave-git` resolves local and remote git repositories into commit-pinned snapshots for Weave. It is
+the first source-provider extension and speaks `weave.source/v1`.
 
 ```sh
 git+https://host/team/repo.git
@@ -12,8 +12,10 @@ git+https://host/team/repo.git
 
 ## Status
 
-This first slice supports **local repositories**. Remote fetch, workspace object sources, installers
-and release packaging follow in later slices.
+This slice supports **local and remote repositories**. Remote fetch uses the operator's system
+`git`, stores a bare mirror under `$WEAVE_CACHE_DIR/git`, and reuses cached commits when the remote
+is unavailable in permissive mode. Workspace object sources, installers and release packaging follow
+in later slices.
 
 ## Supported requests
 
@@ -25,7 +27,7 @@ and release packaging follow in later slices.
   "uri": "/home/user/src/weave",
   "ref": "HEAD",
   "cache_dir": "/home/user/.cache/weave",
-  "options": {"worktree": false}
+  "options": {"worktree": false, "depth": 1, "permissive": false}
 }
 ```
 
@@ -37,12 +39,18 @@ and description.
 - `worktree: false` materializes a committed tree under
   `$WEAVE_CACHE_DIR/sources/<source_id>/worktree`.
 - `worktree: true` returns the local checkout and records the current `HEAD` plus a dirty warning.
+  Worktree mode is local-only.
+- Remote URIs (`git+https`, `git+ssh`, SCP-like and `git+file`) are fetched into a bare mirror under
+  `$WEAVE_CACHE_DIR/git/<host>/<owner>/<repo>.git`.
+- `options.depth` passes a shallow-fetch hint to the mirror.
 - Snapshot worktrees contain no `.git` directory.
 - Re-ingesting the same commit reuses the worktree.
 - A ref or commit change replaces the worktree contents under the same path.
+- If a remote is unreachable and the request is permissive, the cached commit for the same ref is
+  reused with a warning; strict requests fail.
 - Missing READMEs produce a warning and an empty repository body.
 - Unsafe symlinks are skipped with a warning.
-- Remote git URIs are rejected until the remote slice lands.
+- Credentials are read from the operator's git configuration or SSH agent and never persisted.
 
 ## Develop
 

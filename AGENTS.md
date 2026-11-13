@@ -19,7 +19,7 @@ Weave packages and never parses source code.
 ```text
 main.go                 CLI, describe/version and source request entrypoint
 internal/source/        weave.source/v1 wire types
-internal/provider/      local git resolution and snapshot materialization
+internal/provider/      local and remote git resolution, bare mirrors and snapshot materialization
 docs/bdd/               extension-side behavior scenarios
 scripts/                verification
 ```
@@ -34,14 +34,16 @@ scripts/                verification
    worktree path.
 5. **Source only:** never write into the source repository or the bundle.
 6. **No execution:** never run repository code, build tools or hooks.
-7. **Conservative network:** the local provider slice performs no network access. Remote fetch is a
-   later opt-in slice.
+7. **Conservative network:** only remote URIs explicitly supplied by core are fetched. Store and MCP
+   reads never fetch, and the local path slice performs no network access.
 8. **Deterministic:** the same commit resolves to the same worktree contents and provenance.
 9. **Bounded:** enforce the file, project, time and symlink limits from the specification.
 
 ## Testing quirks
 
 - Fixtures create temporary git repositories with the real `git` CLI; tests skip when git is absent.
+- Remote tests use `git+file://` bare repositories, so they exercise mirror fetch and offline reuse
+  without network access.
 - Snapshot tests assert that `.git` is not copied into the worktree.
 - The provider never needs Weave or `weave-code` to build or test.
 
@@ -55,4 +57,4 @@ scripts/                verification
 ## Release
 
 - Tags use `vX.Y.Z`; the binary name stays `weave-git`.
-- Remote fetch, installers and release packaging land in later slices.
+- Installers and release packaging land in later slices.
