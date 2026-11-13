@@ -337,6 +337,70 @@ func TestMaterializeLimitFailureKeepsPreviousSnapshot(t *testing.T) {
 	}
 }
 
+func TestMaterializeSubmodulesOptIn(t *testing.T) {
+	sub := gitFixture(t, map[string]string{"sub.txt": "submodule content\n"})
+	parent := gitFixture(t, map[string]string{"README.md": "# Parent\n"})
+	runGit(t, parent, "-c", "protocol.file.allow=always", "submodule", "add", sub, "vendor/sub")
+	runGit(t, parent, "commit", "-q", "-m", "add submodule")
+
+	off, err := Materialize(source.Request{
+		SourceID: "src-sub-off",
+		URI:      parent,
+		CacheDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(off.Snapshot.Path, "vendor", "sub", "sub.txt")); !os.IsNotExist(err) {
+		t.Fatalf("submodule content should be absent by default: %v", err)
+	}
+
+	on, err := Materialize(source.Request{
+		SourceID: "src-sub-on",
+		URI:      parent,
+		CacheDir: t.TempDir(),
+		Options:  source.Options{Submodules: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(on.Snapshot.Path, "vendor", "sub", "sub.txt"))
+	if err != nil || string(data) != "submodule content\n" {
+		t.Fatalf("submodule content = %q err=%v", data, err)
+	}
+	if err := filepath.WalkDir(on.Snapshot.Path, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Name() == ".git" {
+			t.Fatalf("snapshot contains git metadata: %s", path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMaterializeLFSOptInWithoutGitLFS(t *testing.T) {
+	if _, err := exec.LookPath("git-lfs"); err == nil {
+		t.Skip("git-lfs is installed; the missing-tool warning path is not exercised")
+	}
+	root := gitFixture(t, map[string]string{"README.md": "# LFS\n"})
+	response, err := Materialize(source.Request{
+		SourceID: "src-lfs",
+		URI:      root,
+		CacheDir: t.TempDir(),
+		Options:  source.Options{LFS: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(response.Warnings, " ")
+	if !strings.Contains(joined, "git-lfs is not installed") {
+		t.Fatalf("expected a git-lfs warning: %+v", response.Warnings)
+	}
+}
+
 func TestParseLocation(t *testing.T) {
 	tests := []struct {
 		uri    string

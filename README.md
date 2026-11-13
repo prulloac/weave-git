@@ -43,7 +43,9 @@ and description.
 - Remote URIs (`git+https`, `git+ssh`, SCP-like and `git+file`) are fetched into a bare mirror under
   `$WEAVE_CACHE_DIR/git/<host>/<owner>/<repo>.git`.
 - `options.depth` passes a shallow-fetch hint to the mirror.
-- Snapshot worktrees contain no `.git` directory.
+- `options.submodules` materializes committed submodule trees; `options.lfs` expands Git LFS objects
+  through `git lfs pull`. Both default to off and use a temporary checkout under the cache.
+- Snapshot worktrees contain no `.git` directory, including submodule metadata.
 - Re-ingesting the same commit reuses the worktree.
 - A ref or commit change replaces the worktree contents under the same path.
 - If a remote is unreachable and the request is permissive, the cached commit for the same ref is

@@ -118,16 +118,25 @@ func materialize(request source.Request, root, commit string, warnings []string)
 		return worktree, warnings, nil
 	}
 	_ = os.RemoveAll(stage)
-	data, err := gitBytes(root, "archive", "--format=tar", commit)
-	if err != nil {
-		return "", warnings, err
+	if usesCheckout(request.Options) {
+		checkoutWarnings, err := exportCheckout(root, commit, stage, request.Options)
+		if err != nil {
+			_ = os.RemoveAll(stage)
+			return "", warnings, err
+		}
+		warnings = append(warnings, checkoutWarnings...)
+	} else {
+		data, err := gitBytes(root, "archive", "--format=tar", commit)
+		if err != nil {
+			return "", warnings, err
+		}
+		symlinkWarnings, err := extract(data, stage)
+		if err != nil {
+			_ = os.RemoveAll(stage)
+			return "", warnings, err
+		}
+		warnings = append(warnings, symlinkWarnings...)
 	}
-	symlinkWarnings, err := extract(data, stage)
-	if err != nil {
-		_ = os.RemoveAll(stage)
-		return "", warnings, err
-	}
-	warnings = append(warnings, symlinkWarnings...)
 	old := worktree + ".old"
 	_ = os.RemoveAll(old)
 	if _, err := os.Stat(worktree); err == nil {

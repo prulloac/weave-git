@@ -94,6 +94,35 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **Then** the error redacts the userinfo
 - **And** the URI written to provenance contains no password
 
+## Feature: Optional checkout content
+
+### Scenario: Submodules are skipped by default
+
+- **Given** a repository with a committed submodule
+- **When** the source is materialized without `submodules`
+- **Then** the submodule working tree is not populated
+
+### Scenario: Submodules can be included
+
+- **Given** a repository with a committed submodule
+- **When** the request sets `submodules: true`
+- **Then** the submodule tree is materialized
+- **And** no `.git` file or directory remains in the worktree
+
+### Scenario: LFS requires the operator tool
+
+- **Given** a repository using Git LFS
+- **When** the request sets `lfs: true`
+- **Then** the provider runs `git lfs pull` when `git-lfs` is installed
+- **And** it warns and leaves pointers when `git-lfs` is absent
+
+### Scenario: LFS filters stay disabled by default
+
+- **Given** a repository using Git LFS
+- **When** the request does not set `lfs`
+- **Then** archive materialization leaves pointer files
+- **And** no LFS network fetch is attempted
+
 ## Feature: Repository metadata
 
 ### Scenario: README title and description

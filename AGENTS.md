@@ -45,6 +45,7 @@ scripts/                verification
 - Fixtures create temporary git repositories with the real `git` CLI; tests skip when git is absent.
 - Remote tests use `git+file://` bare repositories, so they exercise mirror fetch and offline reuse
   without network access.
+- Submodule tests use `protocol.file.allow=always` for local fixtures.
 - Snapshot tests assert that `.git` is not copied into the worktree.
 - The provider never needs Weave or `weave-code` to build or test.
 
