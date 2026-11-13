@@ -134,6 +134,25 @@ func archiveWithFiles(t *testing.T, files map[string]int) []byte {
 	return buffer.Bytes()
 }
 
+func TestExtractRejectsUnsafePaths(t *testing.T) {
+	for _, name := range []string{"../escape.md", "/absolute.md"} {
+		var buffer bytes.Buffer
+		writer := tar.NewWriter(&buffer)
+		if err := writer.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: 1, Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := writer.Write([]byte("x")); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := extract(buffer.Bytes(), t.TempDir()); err == nil {
+			t.Fatalf("expected %q to be rejected", name)
+		}
+	}
+}
+
 func TestExtractEnforcesLimits(t *testing.T) {
 	limits := snapshotLimits{MaxFileBytes: 1024, MaxProjectBytes: 1500, MaxFiles: 2}
 	tests := []struct {

@@ -401,6 +401,76 @@ func TestMaterializeLFSOptInWithoutGitLFS(t *testing.T) {
 	}
 }
 
+func TestMaterializeTagAndUnknownRef(t *testing.T) {
+	root := gitFixture(t, map[string]string{"README.md": "# Tags\n"})
+	runGit(t, root, "tag", "v1.0.0")
+	response, err := Materialize(source.Request{
+		SourceID: "src-tag",
+		URI:      root,
+		Ref:      "v1.0.0",
+		CacheDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Snapshot.Commit == "" || response.Snapshot.Ref != "v1.0.0" {
+		t.Fatalf("unexpected tag snapshot: %+v", response.Snapshot)
+	}
+	if _, err := Materialize(source.Request{
+		SourceID: "src-unknown",
+		URI:      root,
+		Ref:      "does-not-exist",
+		CacheDir: t.TempDir(),
+	}); err == nil {
+		t.Fatal("expected an unknown ref to fail")
+	}
+}
+
+func TestMaterializeSameCommitReusesWorktree(t *testing.T) {
+	root := gitFixture(t, map[string]string{"README.md": "# Reuse\n"})
+	request := source.Request{SourceID: "src-reuse", URI: root, CacheDir: t.TempDir()}
+	first, err := Materialize(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(first.Snapshot.Path, "README.md")); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Materialize(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Snapshot.Path != first.Snapshot.Path {
+		t.Fatalf("worktree path changed: %q != %q", second.Snapshot.Path, first.Snapshot.Path)
+	}
+	if _, err := os.Stat(filepath.Join(second.Snapshot.Path, "README.md")); !os.IsNotExist(err) {
+		t.Fatalf("same commit should reuse the worktree without rematerializing: %v", err)
+	}
+}
+
+func TestMaterializeSkipsUnsafeSymlink(t *testing.T) {
+	root := gitFixture(t, map[string]string{"README.md": "# Symlinks\n"})
+	if err := os.Symlink("/etc/passwd", filepath.Join(root, "escape")); err != nil {
+		t.Skipf("symlinks are unavailable: %v", err)
+	}
+	runGit(t, root, "add", "escape")
+	runGit(t, root, "commit", "-q", "-m", "unsafe symlink")
+	response, err := Materialize(source.Request{
+		SourceID: "src-symlink",
+		URI:      root,
+		CacheDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(response.Snapshot.Path, "escape")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe symlink was materialized: %v", err)
+	}
+	if !strings.Contains(strings.Join(response.Warnings, " "), "unsafe symlink") {
+		t.Fatalf("expected an unsafe symlink warning: %+v", response.Warnings)
+	}
+}
+
 func TestParseLocation(t *testing.T) {
 	tests := []struct {
 		uri    string
