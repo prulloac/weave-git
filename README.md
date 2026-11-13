@@ -66,6 +66,20 @@ weave-git gc --cache-dir "$WEAVE_CACHE_DIR" --keep src-8f3c2a1d4b5e6f7 --dry-run
 `state.json` or worktree, and runs `git gc --prune=now` on bare mirrors. Mirrors are never deleted.
 When one or more `--keep` IDs are given, that set is authoritative: other source caches are removed.
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/prulloac/weave-git/main/scripts/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/prulloac/weave-git/main/scripts/install.ps1 | iex
+```
+
+Installers default to a user-writable directory and never require administrator rights.
+
 ## Develop
 
 ```sh

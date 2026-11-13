@@ -15,3 +15,4 @@ if [ -n "$unformatted" ]; then
 fi
 
 go build -o /tmp/weave-git .
+bash scripts/install.sh --help >/dev/null

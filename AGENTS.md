@@ -14,6 +14,7 @@ Weave packages and never parses source code.
 - Version: `go run . --version`
 - Cache GC: `go run . gc --cache-dir <dir> [--keep <source-id> ...] [--dry-run] [--json]`
 - Full gate: `./scripts/verify.sh`
+- User-level install: `./scripts/install.sh --help` (or `scripts/install.ps1` on Windows)
 
 ## Layout
 
@@ -58,5 +59,7 @@ scripts/                verification
 
 ## Release
 
-- Tags use `vX.Y.Z`; the binary name stays `weave-git`.
-- Installers and release packaging land in later slices.
+- Tags use `vX.Y.Z`; the release workflow builds six static archives and a draft GitHub Release.
+- Keep the binary name `weave-git`; Weave discovers extensions by the `weave-` prefix.
+- Installers default to a user-writable directory and never require administrator rights.
+- Release archives include the binary, `README.md` and `LICENSE`; checksums are published.
