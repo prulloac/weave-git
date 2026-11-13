@@ -30,6 +30,7 @@ mkdir -p "$work/repo"
   git config user.name "Weave Integration"
   printf '# Integration Fixture\n\nA repository ingested by real binaries.\n' > README.md
   printf 'alpha\n' > notes.md
+  printf '{"name":"integration-fixture","description":"Integration fixture","dependencies":{"react":"^18"}}\n' > package.json
   git add .
   git commit -q -m initial
   branch="$(git symbolic-ref --short HEAD)"
@@ -41,6 +42,10 @@ branch="$(cat "$work/branch")"
 result="$("$work/bin/weave" ingest "git+file://$work/bare.git" --git --ref "$branch" --db "$work/index.db" --json)"
 printf '%s\n' "$result"
 printf '%s' "$result" | grep -q '"ok":true'
+
+dependencies="$("$work/bin/weave" graph "git+file://$work/bare.git" --relation depends_on --db "$work/index.db" --json)"
+printf '%s\n' "$dependencies"
+printf '%s' "$dependencies" | grep -q '"_package/npm/react"'
 
 workspace="$work/workspace"
 "$work/bin/weave" workspace init "$workspace" --json >/dev/null

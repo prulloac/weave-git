@@ -123,6 +123,41 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **Then** archive materialization leaves pointer files
 - **And** no LFS network fetch is attempted
 
+## Feature: Projects and dependencies
+
+### Scenario: A root manifest defines the repository project
+
+- **Given** a repository with `go.mod`, `package.json`, `Cargo.toml` or `pyproject.toml` at the root
+- **When** the source is materialized
+- **Then** the response contains one project for the root
+- **And** its name, description and dependencies come from the manifest
+
+### Scenario: Nested manifests define monorepo projects
+
+- **Given** a repository with manifests in nested directories
+- **When** the source is materialized
+- **Then** each directory with a manifest becomes one project
+- **And** project paths are bundle-relative and deterministic
+
+### Scenario: Dependencies retain versions and scopes
+
+- **Given** manifests with runtime, development, build, peer, optional and indirect dependencies
+- **When** the source is materialized
+- **Then** each dependency carries its name, version constraint and scope
+
+### Scenario: Manifest discovery is bounded
+
+- **Given** a repository with manifests inside `node_modules`, `vendor`, `target`, `dist`, `build` or `.venv`
+- **When** the source is materialized
+- **Then** those directories are skipped
+- **And** manifests over 1 MiB or beyond the project and dependency limits are skipped with a warning
+
+### Scenario: Manifest description falls back when README has none
+
+- **Given** a repository with a manifest description and a README without one
+- **When** the source is materialized
+- **Then** the repository description comes from the root manifest
+
 ## Feature: Repository metadata
 
 ### Scenario: README title and description

@@ -71,13 +71,18 @@ func Materialize(request source.Request) (source.Response, error) {
 		}
 	}
 	if request.Options.Worktree {
+		projects, projectWarnings := discoverProjects(loc.Path)
+		warnings = append(warnings, projectWarnings...)
 		repository, repositoryWarnings := describeRepository(loc.Path, loc.Name)
 		warnings = append(warnings, repositoryWarnings...)
+		if repository.Description == "" {
+			repository.Description = rootManifestDescription(projects)
+		}
 		dirty, _ := isDirty(loc.Path)
 		if dirty {
 			warnings = append(warnings, "working tree has uncommitted changes")
 		}
-		return response(request, loc, loc.Path, commit, false, repository, warnings), nil
+		return response(request, loc, loc.Path, commit, false, repository, toSourceProjects(projects), warnings), nil
 	}
 	if strings.TrimSpace(request.CacheDir) == "" {
 		return source.Response{}, errors.New("cache_dir is required")
@@ -87,13 +92,27 @@ func Materialize(request source.Request) (source.Response, error) {
 		return source.Response{}, err
 	}
 	warnings = materializeWarnings
+	projects, projectWarnings := discoverProjects(worktree)
+	warnings = append(warnings, projectWarnings...)
 	repository, repositoryWarnings := describeRepository(worktree, loc.Name)
 	warnings = append(warnings, repositoryWarnings...)
+	if repository.Description == "" {
+		repository.Description = rootManifestDescription(projects)
+	}
 	if loc.Remote {
 		repository.Host = loc.Host
 		repository.Owner = loc.Owner
 	}
-	return response(request, loc, worktree, commit, true, repository, warnings), nil
+	return response(request, loc, worktree, commit, true, repository, toSourceProjects(projects), warnings), nil
+}
+
+func rootManifestDescription(projects []projectManifest) string {
+	for _, project := range projects {
+		if project.Path == "" {
+			return project.Description
+		}
+	}
+	return ""
 }
 
 func resolveCommit(root, ref string) (string, error) {
@@ -397,7 +416,7 @@ func firstParagraph(body string) string {
 	return text
 }
 
-func response(request source.Request, loc location, path, commit string, readOnly bool, repository source.Repository, warnings []string) source.Response {
+func response(request source.Request, loc location, path, commit string, readOnly bool, repository source.Repository, projects []source.Project, warnings []string) source.Response {
 	return source.Response{
 		V:    source.ProtocolVersion,
 		Type: "source_response",
@@ -410,6 +429,7 @@ func response(request source.Request, loc location, path, commit string, readOnl
 			ReadOnly: readOnly,
 		},
 		Repository: repository,
+		Projects:   projects,
 		Warnings:   warnings,
 	}
 }

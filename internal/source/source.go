@@ -45,11 +45,29 @@ type Repository struct {
 	License     string `json:"license,omitempty"`
 }
 
+// Project describes one manifest-backed project in the snapshot.
+type Project struct {
+	Path         string       `json:"path"`
+	Name         string       `json:"name"`
+	Description  string       `json:"description,omitempty"`
+	Manifest     string       `json:"manifest"`
+	Ecosystem    string       `json:"ecosystem"`
+	Dependencies []Dependency `json:"dependencies,omitempty"`
+}
+
+// Dependency describes one declared project dependency.
+type Dependency struct {
+	Name    string `json:"name"`
+	Version string `json:"version,omitempty"`
+	Scope   string `json:"scope,omitempty"`
+}
+
 // Response is one source-provider reply.
 type Response struct {
 	V          string     `json:"v"`
 	Type       string     `json:"type,omitempty"`
 	Snapshot   Snapshot   `json:"snapshot"`
 	Repository Repository `json:"repository"`
+	Projects   []Project  `json:"projects,omitempty"`
 	Warnings   []string   `json:"warnings,omitempty"`
 }

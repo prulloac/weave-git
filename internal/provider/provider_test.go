@@ -471,6 +471,28 @@ func TestMaterializeSkipsUnsafeSymlink(t *testing.T) {
 	}
 }
 
+func TestMaterializeManifestDescriptionFallback(t *testing.T) {
+	root := gitFixture(t, map[string]string{
+		"README.md":    "# Manifest fallback\n",
+		"package.json": `{"name":"fixture","description":"Manifest description"}`,
+		"src/index.ts": "export const value = 1;\n",
+	})
+	response, err := Materialize(source.Request{
+		SourceID: "src-manifest-description",
+		URI:      root,
+		CacheDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Repository.Description != "Manifest description" {
+		t.Fatalf("description = %q", response.Repository.Description)
+	}
+	if len(response.Projects) != 1 || response.Projects[0].Name != "fixture" {
+		t.Fatalf("projects = %+v", response.Projects)
+	}
+}
+
 func TestParseLocation(t *testing.T) {
 	tests := []struct {
 		uri    string

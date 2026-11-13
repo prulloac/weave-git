@@ -50,7 +50,10 @@ and description.
 - A ref or commit change replaces the worktree contents under the same path.
 - If a remote is unreachable and the request is permissive, the cached commit for the same ref is
   reused with a warning; strict requests fail.
+- Discovers `go.mod`, `package.json`, `Cargo.toml` and `pyproject.toml` projects, including nested
+  monorepo roots, and returns their declared dependencies.
 - Missing READMEs produce a warning and an empty repository body.
+- A root manifest description fills the repository description when the README has none.
 - Unsafe symlinks are skipped with a warning.
 - Snapshots enforce 4 MiB per file, 512 MiB per project and 10,000 files.
 - Credentials are read from the operator's git configuration or SSH agent and never persisted.
