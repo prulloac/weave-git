@@ -22,6 +22,19 @@ var (
 	headingPattern  = regexp.MustCompile(`(?m)^#\s+(.+?)\s*$`)
 )
 
+// defaultLimits mirror the code-extension snapshot limits.
+var defaultLimits = snapshotLimits{
+	MaxFileBytes:    4 << 20,
+	MaxProjectBytes: 512 << 20,
+	MaxFiles:        10000,
+}
+
+type snapshotLimits struct {
+	MaxFileBytes    int64
+	MaxProjectBytes int64
+	MaxFiles        int
+}
+
 type state struct {
 	Commit string `json:"commit"`
 	Ref    string `json:"ref,omitempty"`
@@ -155,8 +168,14 @@ func writeState(base string, value state) error {
 }
 
 func extract(data []byte, destination string) ([]string, error) {
+	return extractWithLimits(data, destination, defaultLimits)
+}
+
+func extractWithLimits(data []byte, destination string, limits snapshotLimits) ([]string, error) {
 	reader := tar.NewReader(bytes.NewReader(data))
 	warnings := make([]string, 0)
+	files := 0
+	total := int64(0)
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -179,6 +198,16 @@ func extract(data []byte, destination string) ([]string, error) {
 				return warnings, err
 			}
 		case tar.TypeReg:
+			files++
+			if files > limits.MaxFiles {
+				return warnings, fmt.Errorf("snapshot exceeds %d files", limits.MaxFiles)
+			}
+			if header.Size > limits.MaxFileBytes {
+				return warnings, fmt.Errorf("snapshot file %q is %d bytes, limit is %d", header.Name, header.Size, limits.MaxFileBytes)
+			}
+			if total+header.Size > limits.MaxProjectBytes {
+				return warnings, fmt.Errorf("snapshot exceeds %d bytes", limits.MaxProjectBytes)
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return warnings, err
 			}
@@ -186,13 +215,20 @@ func extract(data []byte, destination string) ([]string, error) {
 			if err != nil {
 				return warnings, err
 			}
-			_, copyErr := io.Copy(file, reader)
+			written, copyErr := io.Copy(file, io.LimitReader(reader, limits.MaxFileBytes+1))
 			closeErr := file.Close()
 			if copyErr != nil {
 				return warnings, copyErr
 			}
 			if closeErr != nil {
 				return warnings, closeErr
+			}
+			if written > limits.MaxFileBytes {
+				return warnings, fmt.Errorf("snapshot file %q exceeds %d bytes", header.Name, limits.MaxFileBytes)
+			}
+			total += written
+			if total > limits.MaxProjectBytes {
+				return warnings, fmt.Errorf("snapshot exceeds %d bytes", limits.MaxProjectBytes)
 			}
 		case tar.TypeSymlink:
 			linkTarget := header.Linkname

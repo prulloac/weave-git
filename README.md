@@ -50,7 +50,19 @@ and description.
   reused with a warning; strict requests fail.
 - Missing READMEs produce a warning and an empty repository body.
 - Unsafe symlinks are skipped with a warning.
+- Snapshots enforce 4 MiB per file, 512 MiB per project and 10,000 files.
 - Credentials are read from the operator's git configuration or SSH agent and never persisted.
+
+## Cache maintenance
+
+```sh
+weave-git gc --cache-dir "$WEAVE_CACHE_DIR" --json
+weave-git gc --cache-dir "$WEAVE_CACHE_DIR" --keep src-8f3c2a1d4b5e6f7 --dry-run
+```
+
+`gc` removes stale `worktree.stage-*` and `worktree.old` trees, removes source caches without a valid
+`state.json` or worktree, and runs `git gc --prune=now` on bare mirrors. Mirrors are never deleted.
+When one or more `--keep` IDs are given, that set is authoritative: other source caches are removed.
 
 ## Develop
 

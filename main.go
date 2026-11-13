@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/prulloac/weave-git/internal/provider"
 	"github.com/prulloac/weave-git/internal/source"
@@ -32,12 +33,17 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 					"v":                "weave.extension/v1",
 					"name":             "git",
 					"source_providers": []string{"git"},
-					"capabilities":     []string{"repository", "ref-resolution"},
+					"capabilities":     []string{"repository", "ref-resolution", "cache-gc"},
 				})
 			}
 			fmt.Fprintln(stdout, "name: git")
 			fmt.Fprintln(stdout, "source providers: git")
-			fmt.Fprintln(stdout, "capabilities: repository, ref-resolution")
+			fmt.Fprintln(stdout, "capabilities: repository, ref-resolution, cache-gc")
+			return nil
+		case "gc":
+			return runGC(args[1:], stdout, stderr)
+		case "--help", "-h", "help":
+			printUsage(stdout)
 			return nil
 		}
 	}
@@ -53,4 +59,62 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	}
 	return json.NewEncoder(stdout).Encode(response)
+}
+
+func runGC(args []string, stdout, stderr io.Writer) error {
+	cacheDir := strings.TrimSpace(os.Getenv("WEAVE_CACHE_DIR"))
+	jsonOut := false
+	dryRun := false
+	keep := make([]string, 0)
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--cache-dir":
+			if index+1 >= len(args) {
+				return fmt.Errorf("--cache-dir requires a value")
+			}
+			cacheDir = args[index+1]
+			index++
+		case "--keep":
+			if index+1 >= len(args) {
+				return fmt.Errorf("--keep requires a source id")
+			}
+			keep = append(keep, args[index+1])
+			index++
+		case "--dry-run":
+			dryRun = true
+		case "--json":
+			jsonOut = true
+		case "--help", "-h":
+			printGCUsage(stdout)
+			return nil
+		default:
+			return fmt.Errorf("unknown gc argument %q", args[index])
+		}
+	}
+	result, err := provider.CollectGarbage(provider.GCOptions{CacheDir: cacheDir, Keep: keep, DryRun: dryRun})
+	if err != nil {
+		return err
+	}
+	if jsonOut {
+		return json.NewEncoder(stdout).Encode(map[string]any{
+			"v":       "weave.extension/v1",
+			"type":    "gc_response",
+			"dry_run": dryRun,
+			"result":  result,
+		})
+	}
+	for _, warning := range result.Warnings {
+		fmt.Fprintln(stderr, "warning:", warning)
+	}
+	fmt.Fprintf(stdout, "removed %d, pruned %d\n", len(result.Removed), len(result.Pruned))
+	return nil
+}
+
+func printUsage(stdout io.Writer) {
+	fmt.Fprintln(stdout, "usage: weave-git [--version|--describe [--json]|gc|help]")
+	fmt.Fprintln(stdout, "source requests are read as weave.source/v1 JSON on stdin")
+}
+
+func printGCUsage(stdout io.Writer) {
+	fmt.Fprintln(stdout, "usage: weave-git gc [--cache-dir <dir>] [--keep <source-id> ...] [--dry-run] [--json]")
 }

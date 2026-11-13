@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -308,6 +309,31 @@ func TestMaterializeRemoteCommitAndDepth(t *testing.T) {
 		if response.Snapshot.Commit != commit {
 			t.Fatalf("ref %s resolved to %q, want %q", ref, response.Snapshot.Commit, commit)
 		}
+	}
+}
+
+func TestMaterializeLimitFailureKeepsPreviousSnapshot(t *testing.T) {
+	root := gitFixture(t, map[string]string{"README.md": "# Small\n"})
+	request := source.Request{SourceID: "src-limits", URI: root, CacheDir: t.TempDir()}
+	first, err := Materialize(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	big := bytes.Repeat([]byte("x"), (4<<20)+1)
+	if err := os.WriteFile(filepath.Join(root, "big.bin"), big, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "add", "big.bin")
+	runGit(t, root, "commit", "-q", "-m", "too big")
+	if _, err := Materialize(request); err == nil {
+		t.Fatal("expected the file limit to fail materialization")
+	}
+	data, err := os.ReadFile(filepath.Join(first.Snapshot.Path, "README.md"))
+	if err != nil || string(data) != "# Small\n" {
+		t.Fatalf("previous worktree changed: %q err=%v", data, err)
+	}
+	if _, err := os.Stat(filepath.Join(first.Snapshot.Path, "big.bin")); !os.IsNotExist(err) {
+		t.Fatalf("oversized file leaked into the worktree: %v", err)
 	}
 }
 

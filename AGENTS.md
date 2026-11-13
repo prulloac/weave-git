@@ -12,6 +12,7 @@ Weave packages and never parses source code.
 - Vet / format: `go vet ./...`; `gofmt -l .` must print nothing
 - Describe: `go run . --describe --json`
 - Version: `go run . --version`
+- Cache GC: `go run . gc --cache-dir <dir> [--keep <source-id> ...] [--dry-run] [--json]`
 - Full gate: `./scripts/verify.sh`
 
 ## Layout

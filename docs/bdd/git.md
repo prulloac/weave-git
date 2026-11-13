@@ -125,3 +125,45 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **When** the source is materialized
 - **Then** extraction fails
 - **And** no out-of-root file is written
+
+### Scenario: Snapshot limits are enforced
+
+- **Given** a repository whose file, project size or file count exceeds the limits
+- **When** the source is materialized
+- **Then** extraction fails before the worktree swap
+- **And** the previous snapshot remains valid
+
+## Feature: Cache maintenance
+
+### Scenario: Garbage collection removes stale staging trees
+
+- **Given** a source cache with `worktree.stage-*` or `worktree.old` directories
+- **When** `weave-git gc` runs
+- **Then** the staging and old trees are removed
+- **And** the active `worktree` is retained
+
+### Scenario: Garbage collection removes incomplete sources
+
+- **Given** a source directory without `state.json` or without a worktree
+- **When** `weave-git gc` runs
+- **Then** the incomplete directory is removed
+
+### Scenario: Garbage collection keeps an authoritative set
+
+- **Given** `weave-git gc --keep <source-id>`
+- **When** other source directories exist
+- **Then** only the listed source IDs and active mirrors are retained
+
+### Scenario: Garbage collection is dry-runnable
+
+- **Given** `weave-git gc --dry-run`
+- **When** stale entries exist
+- **Then** the report lists them
+- **And** nothing is deleted
+
+### Scenario: Mirror objects are compacted
+
+- **Given** a bare mirror under the cache
+- **When** `weave-git gc` runs
+- **Then** git object pruning runs on the mirror
+- **And** the mirror directory is retained
