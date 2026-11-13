@@ -241,7 +241,10 @@ func describeRepository(root string) (source.Repository, []string) {
 	if title := firstHeading(body); title != "" {
 		repository.Title = title
 	}
-	repository.Description = firstParagraph(body)
+	repository.Description = frontmatterDescription(body)
+	if repository.Description == "" {
+		repository.Description = firstParagraph(body)
+	}
 	repository.Readme = readme
 	if license := findLicense(root); license != "" {
 		repository.License = license
@@ -280,13 +283,52 @@ func findLicense(root string) string {
 }
 
 func firstHeading(body string) string {
+	body = stripFrontmatter(body)
 	if match := headingPattern.FindStringSubmatch(body); len(match) == 2 {
 		return strings.TrimSpace(match[1])
 	}
 	return ""
 }
 
+func frontmatterDescription(body string) string {
+	header, ok := frontmatterBlock(body)
+	if !ok {
+		return ""
+	}
+	for _, line := range strings.Split(header, "\n") {
+		key, value, found := strings.Cut(line, ":")
+		if !found || strings.TrimSpace(strings.ToLower(key)) != "description" {
+			continue
+		}
+		return strings.Trim(strings.TrimSpace(value), `"'`)
+	}
+	return ""
+}
+
+func stripFrontmatter(body string) string {
+	if _, ok := frontmatterBlock(body); !ok {
+		return body
+	}
+	end := strings.Index(body[4:], "\n---")
+	if end < 0 {
+		return body
+	}
+	return body[4+end+4:]
+}
+
+func frontmatterBlock(body string) (string, bool) {
+	if !strings.HasPrefix(body, "---\n") {
+		return "", false
+	}
+	end := strings.Index(body[4:], "\n---")
+	if end < 0 {
+		return "", false
+	}
+	return body[4 : 4+end], true
+}
+
 func firstParagraph(body string) string {
+	body = stripFrontmatter(body)
 	inFence := false
 	paragraph := make([]string, 0)
 	for _, line := range strings.Split(body, "\n") {

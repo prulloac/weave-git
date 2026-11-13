@@ -26,6 +26,14 @@ func TestDescribeJSON(t *testing.T) {
 	}
 }
 
+func TestRejectsWrongProtocol(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := run(nil, strings.NewReader(`{"v":"weave.cli/v1","type":"source_request"}`), &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected protocol error")
+	}
+}
+
 func TestVersion(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if err := run([]string{"--version"}, strings.NewReader(""), &stdout, &stderr); err != nil {

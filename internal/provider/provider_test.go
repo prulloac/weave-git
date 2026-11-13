@@ -90,6 +90,23 @@ func TestMaterializeWorktree(t *testing.T) {
 	}
 }
 
+func TestReadmeFrontmatterDescription(t *testing.T) {
+	root := gitFixture(t, map[string]string{
+		"README.md": "---\ntitle: Weave\ndescription: Local-first database.\n---\n\n# Weave\n\nLonger body.\n",
+	})
+	response, err := Materialize(source.Request{
+		SourceID: "src-frontmatter",
+		URI:      root,
+		CacheDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Repository.Description != "Local-first database." {
+		t.Fatalf("description = %q", response.Repository.Description)
+	}
+}
+
 func TestMaterializeMissingReadme(t *testing.T) {
 	root := gitFixture(t, map[string]string{"main.go": "package main\n"})
 	response, err := Materialize(source.Request{

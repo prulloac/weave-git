@@ -45,6 +45,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if err := json.NewDecoder(stdin).Decode(&request); err != nil {
 		return fmt.Errorf("decode source request: %w", err)
 	}
+	if request.V != source.ProtocolVersion || request.Type != "source_request" {
+		return fmt.Errorf("unsupported source request")
+	}
 	response, err := provider.Materialize(request)
 	if err != nil {
 		return err
