@@ -22,7 +22,7 @@ Weave packages and never parses source code.
 ```text
 main.go                 CLI, describe/version and source request entrypoint
 internal/source/        weave.source/v1 wire types
-internal/provider/      local and remote git resolution, bare mirrors, manifests and snapshots
+internal/provider/      local and remote git resolution, mirrors, manifests, descriptors and snapshots
 docs/bdd/               extension-side behavior scenarios
 scripts/                verification, installers and cross-repository integration
 ```
@@ -31,6 +31,8 @@ scripts/                verification, installers and cross-repository integratio
 
 1. **Static builds:** no C libraries, no CGO compiler and no language server.
 2. **Contract only:** speak `weave.source/v1`; never import Weave packages or read its database.
+   Emit generic synthetic documents, relations and source metadata, retaining legacy fields only
+   for the compatibility window.
 3. **Acquisition only:** resolve refs, materialize snapshots, read project manifests and return
    bounded commit metadata. Do not parse code, symbols or imports; that belongs to analyzers such as
    `weave-code`.

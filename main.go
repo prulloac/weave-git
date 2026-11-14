@@ -30,15 +30,23 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 			jsonMode := len(args) > 1 && args[1] == "--json"
 			if jsonMode {
 				return json.NewEncoder(stdout).Encode(map[string]any{
-					"v":                "weave.extension/v1",
-					"name":             "git",
-					"source_providers": []string{"git"},
-					"capabilities":     []string{"repository", "ref-resolution", "cache-gc"},
+					"v":                   "weave.extension/v1",
+					"name":                "git",
+					"source_providers":    []string{"git"},
+					"capabilities":        []string{"repository", "ref-resolution", "cache-gc"},
+					"document_namespaces": []string{"_repo", "_project", "_package/", "_commit/"},
+					"artifact_namespaces": []string{"_sources/"},
+					"relation_kinds": []map[string]any{
+						{"name": "depends_on", "default": true},
+						{"name": "parent_of", "default": true},
+					},
 				})
 			}
 			fmt.Fprintln(stdout, "name: git")
 			fmt.Fprintln(stdout, "source providers: git")
 			fmt.Fprintln(stdout, "capabilities: repository, ref-resolution, cache-gc")
+			fmt.Fprintln(stdout, "document namespaces: _repo, _project, _package/, _commit/")
+			fmt.Fprintln(stdout, "relation kinds: depends_on, parent_of")
 			return nil
 		case "gc":
 			return runGC(args[1:], stdout, stderr)

@@ -53,6 +53,23 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **Then** the provider returns the local checkout
 - **And** it warns that the worktree is dirty
 
+## Feature: Generic descriptors
+
+### Scenario: The provider emits generic documents and relations
+
+- **Given** a repository with a README, manifests and history enabled
+- **When** the source is materialized
+- **Then** the response contains `_repo`, `_project`, `_package` and `_commit` documents
+- **And** their relations include `contains`, `depends_on` and `parent_of`
+- **And** legacy `repository`, `projects` and `commits` fields remain populated
+
+### Scenario: Provider options override typed options
+
+- **Given** a request with `provider_options` for history and depth
+- **When** the provider materializes the source
+- **Then** the provider options are applied
+- **And** the typed fields remain valid fallbacks
+
 ## Feature: Remote sources
 
 ### Scenario: A remote repository becomes a commit-pinned snapshot

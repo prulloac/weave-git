@@ -5,13 +5,14 @@ const ProtocolVersion = "weave.source/v1"
 
 // Options controls one source materialization.
 type Options struct {
-	Worktree     bool `json:"worktree,omitempty"`
-	Submodules   bool `json:"submodules,omitempty"`
-	LFS          bool `json:"lfs,omitempty"`
-	Depth        int  `json:"depth,omitempty"`
-	Permissive   bool `json:"permissive,omitempty"`
-	History      bool `json:"history,omitempty"`
-	HistoryLimit int  `json:"history_limit,omitempty"`
+	Worktree        bool           `json:"worktree,omitempty"`
+	Submodules      bool           `json:"submodules,omitempty"`
+	LFS             bool           `json:"lfs,omitempty"`
+	Depth           int            `json:"depth,omitempty"`
+	Permissive      bool           `json:"permissive,omitempty"`
+	History         bool           `json:"history,omitempty"`
+	HistoryLimit    int            `json:"history_limit,omitempty"`
+	ProviderOptions map[string]any `json:"provider_options,omitempty"`
 }
 
 // Request is one source-provider request payload.
@@ -76,13 +77,41 @@ type Commit struct {
 	Subject string   `json:"subject,omitempty"`
 }
 
+// Document is one generic synthetic graph document.
+type Document struct {
+	ID          string         `json:"id"`
+	Path        string         `json:"path,omitempty"`
+	Type        string         `json:"type"`
+	ContentKind string         `json:"content_kind,omitempty"`
+	MediaType   string         `json:"media_type,omitempty"`
+	Title       string         `json:"title,omitempty"`
+	Description string         `json:"description,omitempty"`
+	Keywords    []string       `json:"keywords,omitempty"`
+	Body        string         `json:"body,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	Scope       *string        `json:"scope,omitempty"`
+	Consumes    []string       `json:"consumes,omitempty"`
+}
+
+// Relation is one generic synthetic graph relation.
+type Relation struct {
+	From   string  `json:"from"`
+	To     string  `json:"to,omitempty"`
+	ToPath string  `json:"to_path,omitempty"`
+	Kind   string  `json:"kind"`
+	Raw    *string `json:"raw,omitempty"`
+}
+
 // Response is one source-provider reply.
 type Response struct {
-	V          string     `json:"v"`
-	Type       string     `json:"type,omitempty"`
-	Snapshot   Snapshot   `json:"snapshot"`
-	Repository Repository `json:"repository"`
-	Projects   []Project  `json:"projects,omitempty"`
-	Commits    []Commit   `json:"commits,omitempty"`
-	Warnings   []string   `json:"warnings,omitempty"`
+	V              string         `json:"v"`
+	Type           string         `json:"type,omitempty"`
+	Snapshot       Snapshot       `json:"snapshot"`
+	Repository     Repository     `json:"repository"`
+	Projects       []Project      `json:"projects,omitempty"`
+	Commits        []Commit       `json:"commits,omitempty"`
+	Documents      []Document     `json:"documents,omitempty"`
+	Relations      []Relation     `json:"relations,omitempty"`
+	SourceMetadata map[string]any `json:"source_metadata,omitempty"`
+	Warnings       []string       `json:"warnings,omitempty"`
 }

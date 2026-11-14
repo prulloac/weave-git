@@ -43,21 +43,25 @@ result="$("$work/bin/weave" ingest "git+file://$work/bare.git" --git --ref "$bra
 printf '%s\n' "$result"
 printf '%s' "$result" | grep -q '"ok":true'
 
-dependencies="$("$work/bin/weave" graph "git+file://$work/bare.git" --relation depends_on --db "$work/index.db" --json)"
-printf '%s\n' "$dependencies"
-printf '%s' "$dependencies" | grep -q '"_package/npm/react"'
-
-commits="$("$work/bin/weave" list "git+file://$work/bare.git" --type Commit --db "$work/index.db" --json)"
-printf '%s\n' "$commits"
-printf '%s' "$commits" | grep -q '"_commit/'
-
 workspace="$work/workspace"
 "$work/bin/weave" workspace init "$workspace" --json >/dev/null
-"$work/bin/weave" source add core "git+file://$work/bare.git" --git --ref "$branch" --workspace "$workspace" --json >/dev/null
+"$work/bin/weave" source add core "git+file://$work/bare.git" --git --ref "$branch" --history --history-limit 5 --workspace "$workspace" --json >/dev/null
 "$work/bin/weave" ingest --workspace "$workspace" --json >/dev/null
 sources="$("$work/bin/weave" source list --workspace "$workspace" --json)"
 printf '%s\n' "$sources"
 printf '%s' "$sources" | grep -q '"provider":"git"'
 printf '%s' "$sources" | grep -q '"commit":"'
+snapshot="$(printf '%s' "$sources" | sed -n 's/.*"path":"\([^"]*\)".*/\1/p')"
+if [ -n "$snapshot" ]; then
+  dependencies="$("$work/bin/weave" list "$snapshot" --type ExternalPackage --db "$workspace/.weave/index.db" --json)"
+  printf '%s\n' "$dependencies"
+  printf '%s' "$dependencies" | grep -q '"_package/npm/react"'
+  commits="$("$work/bin/weave" list "$snapshot" --type Commit --db "$workspace/.weave/index.db" --json)"
+  printf '%s\n' "$commits"
+  printf '%s' "$commits" | grep -q '"_commit/'
+  graph="$("$work/bin/weave" graph "$snapshot" --relation depends_on --db "$workspace/.weave/index.db" --json)"
+  printf '%s\n' "$graph"
+  printf '%s' "$graph" | grep -q '"_package/npm/react"'
+fi
 
 echo "integration: ok"

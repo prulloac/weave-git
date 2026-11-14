@@ -14,8 +14,8 @@ git+https://host/team/repo.git
 
 This slice supports **local and remote repositories**. Remote fetch uses the operator's system
 `git`, stores a bare mirror under `$WEAVE_CACHE_DIR/git`, and reuses cached commits when the remote
-is unavailable in permissive mode. Workspace object sources, installers and release packaging follow
-in later slices.
+is unavailable in permissive mode. The provider emits generic synthetic documents, relations and
+source metadata for new core versions while retaining legacy response fields for compatibility.
 
 ## Supported requests
 
@@ -47,6 +47,10 @@ and description.
   through `git lfs pull`. Both default to off and use a temporary checkout under the cache.
 - `options.history` returns recent commit metadata; `options.history_limit` defaults to 20 and is
   capped at 100. Host URLs are derived locally, without a hosting API.
+- `options.provider_options` overrides the typed option fields when supplied; the CLI exposes it as
+  `--provider-option key=value`.
+- The response includes generic `documents`, `relations` and `source_metadata`; legacy
+  `repository`, `projects` and `commits` remain populated during the migration release.
 - Snapshot worktrees contain no `.git` directory, including submodule metadata.
 - Re-ingesting the same commit reuses the worktree.
 - A ref or commit change replaces the worktree contents under the same path.

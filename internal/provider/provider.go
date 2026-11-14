@@ -46,6 +46,7 @@ func Materialize(request source.Request) (source.Response, error) {
 	if !sourceIDPattern.MatchString(request.SourceID) {
 		return source.Response{}, fmt.Errorf("invalid source_id %q", request.SourceID)
 	}
+	request.Options = normalizeOptions(request.Options)
 	loc, err := parseLocation(request.URI)
 	if err != nil {
 		return source.Response{}, err
@@ -85,7 +86,7 @@ func Materialize(request source.Request) (source.Response, error) {
 		if dirty {
 			warnings = append(warnings, "working tree has uncommitted changes")
 		}
-		return response(request, loc, loc.Path, commit, false, repository, toSourceProjects(projects), commits, warnings), nil
+		return withDescriptors(response(request, loc, loc.Path, commit, false, repository, toSourceProjects(projects), commits, warnings)), nil
 	}
 	if strings.TrimSpace(request.CacheDir) == "" {
 		return source.Response{}, errors.New("cache_dir is required")
@@ -109,7 +110,7 @@ func Materialize(request source.Request) (source.Response, error) {
 		repository.Host = loc.Host
 		repository.Owner = loc.Owner
 	}
-	return response(request, loc, worktree, commit, true, repository, toSourceProjects(projects), commits, warnings), nil
+	return withDescriptors(response(request, loc, worktree, commit, true, repository, toSourceProjects(projects), commits, warnings)), nil
 }
 
 func collectHistory(root, commit string, options source.Options) ([]source.Commit, []string) {
