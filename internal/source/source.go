@@ -30,7 +30,8 @@ type Request struct {
 type Snapshot struct {
 	Path     string `json:"path"`
 	SourceID string `json:"source_id"`
-	Commit   string `json:"commit"`
+	Revision string `json:"revision,omitempty"`
+	Commit   string `json:"commit,omitempty"`
 	Ref      string `json:"ref,omitempty"`
 	URI      string `json:"uri,omitempty"`
 	ReadOnly bool   `json:"read_only,omitempty"`
@@ -102,6 +103,13 @@ type Relation struct {
 	Raw    *string `json:"raw,omitempty"`
 }
 
+// Artifact is one extension-owned export artifact.
+type Artifact struct {
+	Path      string `json:"path"`
+	MediaType string `json:"media_type,omitempty"`
+	Content   any    `json:"content"`
+}
+
 // Response is one source-provider reply.
 type Response struct {
 	V              string         `json:"v"`
@@ -112,6 +120,7 @@ type Response struct {
 	Commits        []Commit       `json:"commits,omitempty"`
 	Documents      []Document     `json:"documents,omitempty"`
 	Relations      []Relation     `json:"relations,omitempty"`
+	Artifacts      []Artifact     `json:"artifacts,omitempty"`
 	SourceMetadata map[string]any `json:"source_metadata,omitempty"`
 	Warnings       []string       `json:"warnings,omitempty"`
 }

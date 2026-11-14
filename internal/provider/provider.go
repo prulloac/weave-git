@@ -442,6 +442,7 @@ func response(request source.Request, loc location, path, commit string, readOnl
 			Path:     path,
 			SourceID: request.SourceID,
 			Commit:   commit,
+			Revision: commit,
 			Ref:      request.Ref,
 			URI:      loc.URI,
 			ReadOnly: readOnly,

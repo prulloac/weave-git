@@ -192,6 +192,7 @@ func withDescriptors(response source.Response) source.Response {
 	relations = dedupeRelations(relations)
 	response.Documents = documents
 	response.Relations = relations
+	response.Artifacts = repositoryArtifacts(root, documents)
 	response.SourceMetadata = map[string]any{
 		"provider":   "git",
 		"uri":        response.Snapshot.URI,
@@ -209,6 +210,75 @@ func withDescriptors(response source.Response) source.Response {
 		"worktree":   !response.Snapshot.ReadOnly,
 	}
 	return response
+}
+
+func repositoryArtifacts(root string, documents []source.Document) []source.Artifact {
+	for _, document := range documents {
+		if document.ID != "_repo" {
+			continue
+		}
+		contains := make([]map[string]any, 0)
+		readme := readmeID(document.Consumes)
+		for _, file := range snapshotFileIDs(root) {
+			if file == readme {
+				continue
+			}
+			contains = append(contains, map[string]any{
+				"from": "_repo", "to": file, "kind": "contains",
+			})
+		}
+		record := map[string]any{
+			"id": document.ID, "title": document.Title, "description": document.Description,
+			"keywords": document.Keywords, "body": document.Body,
+			"content_metadata": document.Metadata,
+		}
+		if len(contains) > 0 {
+			record["contains"] = contains
+		}
+		return []source.Artifact{{
+			Path: "_sources/repositories.json", MediaType: "application/json",
+			Content: map[string]any{
+				"v":            "weave.repositories/v1",
+				"repositories": []any{record},
+			},
+		}}
+	}
+	return nil
+}
+
+func snapshotFileIDs(root string) []string {
+	result := make([]string, 0)
+	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			if path != root && entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+		id := filepath.ToSlash(relative)
+		if strings.HasSuffix(strings.ToLower(id), ".md") {
+			id = strings.TrimSuffix(id, filepath.Ext(id))
+		}
+		result = append(result, id)
+		return nil
+	})
+	sort.Strings(result)
+	return result
+}
+
+func readmeID(consumes []string) string {
+	if len(consumes) == 0 {
+		return ""
+	}
+	value := filepath.ToSlash(consumes[0])
+	return strings.TrimSuffix(value, filepath.Ext(value))
 }
 
 func readRepositoryBody(root, readme string) string {
