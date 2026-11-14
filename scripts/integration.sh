@@ -39,13 +39,17 @@ mkdir -p "$work/repo"
 )
 branch="$(cat "$work/branch")"
 
-result="$("$work/bin/weave" ingest "git+file://$work/bare.git" --git --ref "$branch" --db "$work/index.db" --json)"
+result="$("$work/bin/weave" ingest "git+file://$work/bare.git" --git --ref "$branch" --history --history-limit 5 --db "$work/index.db" --json)"
 printf '%s\n' "$result"
 printf '%s' "$result" | grep -q '"ok":true'
 
 dependencies="$("$work/bin/weave" graph "git+file://$work/bare.git" --relation depends_on --db "$work/index.db" --json)"
 printf '%s\n' "$dependencies"
 printf '%s' "$dependencies" | grep -q '"_package/npm/react"'
+
+commits="$("$work/bin/weave" list "git+file://$work/bare.git" --type Commit --db "$work/index.db" --json)"
+printf '%s\n' "$commits"
+printf '%s' "$commits" | grep -q '"_commit/'
 
 workspace="$work/workspace"
 "$work/bin/weave" workspace init "$workspace" --json >/dev/null

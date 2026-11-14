@@ -45,6 +45,8 @@ and description.
 - `options.depth` passes a shallow-fetch hint to the mirror.
 - `options.submodules` materializes committed submodule trees; `options.lfs` expands Git LFS objects
   through `git lfs pull`. Both default to off and use a temporary checkout under the cache.
+- `options.history` returns recent commit metadata; `options.history_limit` defaults to 20 and is
+  capped at 100. Host URLs are derived locally, without a hosting API.
 - Snapshot worktrees contain no `.git` directory, including submodule metadata.
 - Re-ingesting the same commit reuses the worktree.
 - A ref or commit change replaces the worktree contents under the same path.
@@ -52,6 +54,10 @@ and description.
   reused with a warning; strict requests fail.
 - Discovers `go.mod`, `package.json`, `Cargo.toml` and `pyproject.toml` projects, including nested
   monorepo roots, and returns their declared dependencies.
+- `options.history` returns a bounded commit window for `Commit` graph nodes; `history_limit`
+  defaults to 20 and is capped at 100.
+- Remote repositories carry deterministic `host_kind`, `web_url` and `commit_url` metadata for
+  GitHub, GitLab, Bitbucket and generic hosts, with no hosting API call.
 - Missing READMEs produce a warning and an empty repository body.
 - A root manifest description fills the repository description when the README has none.
 - Unsafe symlinks are skipped with a warning.

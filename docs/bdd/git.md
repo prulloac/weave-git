@@ -158,6 +158,28 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **When** the source is materialized
 - **Then** the repository description comes from the root manifest
 
+## Feature: Commit history and host enrichment
+
+### Scenario: History is opt-in
+
+- **Given** a repository with several commits
+- **When** the source is materialized without `history`
+- **Then** no commits are returned
+
+### Scenario: Bounded history is returned newest first
+
+- **Given** a repository with at least ten commits
+- **When** the request sets `history: true` and `history_limit: 3`
+- **Then** three commits are returned newest first
+- **And** each commit carries SHA, parents, author, timestamp and subject
+
+### Scenario: Host URLs are deterministic
+
+- **Given** a remote URI on GitHub, GitLab, Bitbucket or another host
+- **When** the source is materialized
+- **Then** the repository carries `host_kind`, `web_url` and `commit_url`
+- **And** no hosting API is called
+
 ## Feature: Repository metadata
 
 ### Scenario: README title and description

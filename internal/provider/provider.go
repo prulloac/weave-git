@@ -78,11 +78,14 @@ func Materialize(request source.Request) (source.Response, error) {
 		if repository.Description == "" {
 			repository.Description = rootManifestDescription(projects)
 		}
+		enrichRepository(&repository, loc, commit)
+		commits, historyWarnings := collectHistory(loc.Path, commit, request.Options)
+		warnings = append(warnings, historyWarnings...)
 		dirty, _ := isDirty(loc.Path)
 		if dirty {
 			warnings = append(warnings, "working tree has uncommitted changes")
 		}
-		return response(request, loc, loc.Path, commit, false, repository, toSourceProjects(projects), warnings), nil
+		return response(request, loc, loc.Path, commit, false, repository, toSourceProjects(projects), commits, warnings), nil
 	}
 	if strings.TrimSpace(request.CacheDir) == "" {
 		return source.Response{}, errors.New("cache_dir is required")
@@ -99,11 +102,25 @@ func Materialize(request source.Request) (source.Response, error) {
 	if repository.Description == "" {
 		repository.Description = rootManifestDescription(projects)
 	}
+	enrichRepository(&repository, loc, commit)
+	commits, historyWarnings := collectHistory(archiveRoot, commit, request.Options)
+	warnings = append(warnings, historyWarnings...)
 	if loc.Remote {
 		repository.Host = loc.Host
 		repository.Owner = loc.Owner
 	}
-	return response(request, loc, worktree, commit, true, repository, toSourceProjects(projects), warnings), nil
+	return response(request, loc, worktree, commit, true, repository, toSourceProjects(projects), commits, warnings), nil
+}
+
+func collectHistory(root, commit string, options source.Options) ([]source.Commit, []string) {
+	if !options.History {
+		return nil, nil
+	}
+	commits, err := readHistory(root, commit, options.HistoryLimit)
+	if err != nil {
+		return nil, []string{fmt.Sprintf("commit history unavailable: %v", err)}
+	}
+	return commits, nil
 }
 
 func rootManifestDescription(projects []projectManifest) string {
@@ -416,7 +433,7 @@ func firstParagraph(body string) string {
 	return text
 }
 
-func response(request source.Request, loc location, path, commit string, readOnly bool, repository source.Repository, projects []source.Project, warnings []string) source.Response {
+func response(request source.Request, loc location, path, commit string, readOnly bool, repository source.Repository, projects []source.Project, commits []source.Commit, warnings []string) source.Response {
 	return source.Response{
 		V:    source.ProtocolVersion,
 		Type: "source_response",
@@ -430,6 +447,7 @@ func response(request source.Request, loc location, path, commit string, readOnl
 		},
 		Repository: repository,
 		Projects:   projects,
+		Commits:    commits,
 		Warnings:   warnings,
 	}
 }

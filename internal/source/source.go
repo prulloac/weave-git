@@ -5,11 +5,13 @@ const ProtocolVersion = "weave.source/v1"
 
 // Options controls one source materialization.
 type Options struct {
-	Worktree   bool `json:"worktree,omitempty"`
-	Submodules bool `json:"submodules,omitempty"`
-	LFS        bool `json:"lfs,omitempty"`
-	Depth      int  `json:"depth,omitempty"`
-	Permissive bool `json:"permissive,omitempty"`
+	Worktree     bool `json:"worktree,omitempty"`
+	Submodules   bool `json:"submodules,omitempty"`
+	LFS          bool `json:"lfs,omitempty"`
+	Depth        int  `json:"depth,omitempty"`
+	Permissive   bool `json:"permissive,omitempty"`
+	History      bool `json:"history,omitempty"`
+	HistoryLimit int  `json:"history_limit,omitempty"`
 }
 
 // Request is one source-provider request payload.
@@ -43,6 +45,9 @@ type Repository struct {
 	Host        string `json:"host,omitempty"`
 	Owner       string `json:"owner,omitempty"`
 	License     string `json:"license,omitempty"`
+	HostKind    string `json:"host_kind,omitempty"`
+	WebURL      string `json:"web_url,omitempty"`
+	CommitURL   string `json:"commit_url,omitempty"`
 }
 
 // Project describes one manifest-backed project in the snapshot.
@@ -62,6 +67,15 @@ type Dependency struct {
 	Scope   string `json:"scope,omitempty"`
 }
 
+// Commit is one commit in the opt-in history window.
+type Commit struct {
+	SHA     string   `json:"sha"`
+	Parents []string `json:"parents,omitempty"`
+	Author  string   `json:"author,omitempty"`
+	Date    string   `json:"date,omitempty"`
+	Subject string   `json:"subject,omitempty"`
+}
+
 // Response is one source-provider reply.
 type Response struct {
 	V          string     `json:"v"`
@@ -69,5 +83,6 @@ type Response struct {
 	Snapshot   Snapshot   `json:"snapshot"`
 	Repository Repository `json:"repository"`
 	Projects   []Project  `json:"projects,omitempty"`
+	Commits    []Commit   `json:"commits,omitempty"`
 	Warnings   []string   `json:"warnings,omitempty"`
 }
