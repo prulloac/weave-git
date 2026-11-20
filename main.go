@@ -32,6 +32,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 				return json.NewEncoder(stdout).Encode(map[string]any{
 					"v":                   "weave.extension/v1",
 					"name":                "git",
+					"version":             version,
+					"requires":            []map[string]any{{"name": "weave", "min_version": "0.11.0"}},
 					"source_providers":    []string{"git"},
 					"capabilities":        []string{"repository", "ref-resolution", "cache-gc"},
 					"document_namespaces": []string{"_repo", "_project", "_package/", "_commit/"},
