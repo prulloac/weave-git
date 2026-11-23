@@ -65,6 +65,8 @@ scripts/                verification, installers and cross-repository integratio
 
 ## Release
 
+- Current product release: `v0.12.0`; requires `weave >= 0.11.0` for materialization. The `diff`
+  capability is used by `weave source diff` in core v0.12.0.
 - Tags use `vX.Y.Z`; the release workflow builds six static archives and a draft GitHub Release.
 - Keep the binary name `weave-git`; Weave discovers extensions by the `weave-` prefix.
 - Installers default to a user-writable directory and never require administrator rights.
