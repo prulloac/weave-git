@@ -68,6 +68,14 @@ and description.
 - Snapshots enforce 4 MiB per file, 512 MiB per project and 10,000 files.
 - Credentials are read from the operator's git configuration or SSH agent and never persisted.
 
+## Snapshot diff
+
+The provider advertises `diff` in its manifest capabilities and answers `source_diff_request`. A
+request names two provider-resolved refs (`from`, `to`) and returns added, removed, modified and
+renamed paths. `options.format` is `changes` by default; `patch` adds unified hunks for text files.
+Binary changes report `binary: true` and carry no patch. Diff is read-only and deterministic, and it
+never writes the repository or the bundle.
+
 ## Cache maintenance
 
 ```sh

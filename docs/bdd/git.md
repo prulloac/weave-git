@@ -1,7 +1,7 @@
 ---
 type: behavior
 title: "Weave Git Provider Behavior"
-description: "Extension-side scenarios for local and remote git snapshot materialization, ref resolution, stable worktrees, offline cache reuse and repository metadata."
+description: "Extension-side scenarios for local and remote git snapshot materialization, ref resolution, stable worktrees, offline cache reuse, snapshot diff and repository metadata."
 status: draft
 ---
 
@@ -13,7 +13,7 @@ Core behavior:
 Specification:
 [weave-git.md](https://github.com/prulloac/weave-docs/blob/main/specs/weave-git.md)
 
-Go tests: `internal/provider/provider_test.go`, `main_test.go`
+Go tests: `internal/provider/provider_test.go`, `internal/provider/diff_test.go`, `main_test.go`
 
 ## Feature: Local snapshot
 
@@ -270,3 +270,39 @@ Go tests: `internal/provider/provider_test.go`, `main_test.go`
 - **When** `weave-git gc` runs
 - **Then** git object pruning runs on the mirror
 - **And** the mirror directory is retained
+
+## Feature: Snapshot diff
+
+### Scenario: Two commits diff as structured changes
+
+- **Given** two resolved commits in one repository
+- **When** the provider receives a `source_diff_request`
+- **Then** it returns added, removed, modified and renamed paths
+- **And** `from` and `to` echo the resolved commits
+
+### Scenario: Renames are detected
+
+- **Given** a file moved without content changes
+- **When** the provider diffs the two commits
+- **Then** the change is `renamed`
+- **And** `previous_path` names the old path
+
+### Scenario: Patches are opt-in
+
+- **Given** a diff request with `format: changes`
+- **Then** changes carry no patch
+- **When** the request uses `format: patch`
+- **Then** text changes carry unified hunks
+
+### Scenario: Binary changes omit hunks
+
+- **Given** a changed binary file
+- **When** the request uses `format: patch`
+- **Then** the change is `binary`
+- **And** no patch is emitted for it
+
+### Scenario: Diff is deterministic
+
+- **Given** the same commits and options
+- **When** the provider diffs twice
+- **Then** both responses are identical

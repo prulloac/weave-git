@@ -39,11 +39,13 @@ scripts/                verification, installers and cross-repository integratio
 4. **Stable identity:** honor the `source_id` supplied by core. The ref and commit never define the
    worktree path.
 5. **Source only:** never write into the source repository or the bundle.
-6. **No execution:** never run repository code, build tools or hooks.
-7. **Conservative network:** only remote URIs explicitly supplied by core are fetched. Store and MCP
+6. **Diff is read-only:** `source_diff_request` compares two resolved refs and returns structured
+   changes plus optional patches; it never changes the repository, the mirror or the bundle.
+7. **No execution:** never run repository code, build tools or hooks.
+8. **Conservative network:** only remote URIs explicitly supplied by core are fetched. Store and MCP
    reads never fetch, and the local path slice performs no network access.
-8. **Deterministic:** the same commit resolves to the same worktree contents and provenance.
-9. **Bounded:** enforce the file, project, time and symlink limits from the specification.
+9. **Deterministic:** the same commit resolves to the same worktree contents and provenance.
+10. **Bounded:** enforce the file, project, time and symlink limits from the specification.
 
 ## Testing quirks
 

@@ -35,7 +35,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 					"version":             version,
 					"requires":            []map[string]any{{"name": "weave", "min_version": "0.11.0"}},
 					"source_providers":    []string{"git"},
-					"capabilities":        []string{"repository", "ref-resolution", "cache-gc"},
+					"capabilities":        []string{"repository", "ref-resolution", "cache-gc", "diff"},
 					"document_namespaces": []string{"_repo", "_project", "_package/", "_commit/"},
 					"artifact_namespaces": []string{"_sources/"},
 					"relation_kinds": []map[string]any{
@@ -46,7 +46,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 			}
 			fmt.Fprintln(stdout, "name: git")
 			fmt.Fprintln(stdout, "source providers: git")
-			fmt.Fprintln(stdout, "capabilities: repository, ref-resolution, cache-gc")
+			fmt.Fprintln(stdout, "capabilities: repository, ref-resolution, cache-gc, diff")
 			fmt.Fprintln(stdout, "document namespaces: _repo, _project, _package/, _commit/")
 			fmt.Fprintln(stdout, "relation kinds: depends_on, parent_of")
 			return nil
@@ -57,18 +57,44 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 			return nil
 		}
 	}
-	var request source.Request
-	if err := json.NewDecoder(stdin).Decode(&request); err != nil {
-		return fmt.Errorf("decode source request: %w", err)
-	}
-	if request.V != source.ProtocolVersion || request.Type != "source_request" {
-		return fmt.Errorf("unsupported source request")
-	}
-	response, err := provider.Materialize(request)
+	data, err := io.ReadAll(io.LimitReader(stdin, 32<<20))
 	if err != nil {
-		return err
+		return fmt.Errorf("read request: %w", err)
 	}
-	return json.NewEncoder(stdout).Encode(response)
+	var envelope struct {
+		V    string `json:"v"`
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return fmt.Errorf("decode request: %w", err)
+	}
+	if envelope.V != source.ProtocolVersion {
+		return fmt.Errorf("unsupported protocol %q", envelope.V)
+	}
+	switch envelope.Type {
+	case "source_request", "":
+		var request source.Request
+		if err := json.Unmarshal(data, &request); err != nil {
+			return fmt.Errorf("decode source request: %w", err)
+		}
+		response, err := provider.Materialize(request)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(stdout).Encode(response)
+	case "source_diff_request":
+		var request source.DiffRequest
+		if err := json.Unmarshal(data, &request); err != nil {
+			return fmt.Errorf("decode source diff request: %w", err)
+		}
+		response, err := provider.Diff(request)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(stdout).Encode(response)
+	default:
+		return fmt.Errorf("unsupported request type %q", envelope.Type)
+	}
 }
 
 func runGC(args []string, stdout, stderr io.Writer) error {

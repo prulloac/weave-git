@@ -124,3 +124,41 @@ type Response struct {
 	SourceMetadata map[string]any `json:"source_metadata,omitempty"`
 	Warnings       []string       `json:"warnings,omitempty"`
 }
+
+// DiffOptions controls one snapshot comparison.
+type DiffOptions struct {
+	Format     string `json:"format,omitempty"`
+	Context    int    `json:"context,omitempty"`
+	Permissive bool   `json:"permissive,omitempty"`
+}
+
+// DiffRequest is one source-provider diff request.
+type DiffRequest struct {
+	V        string      `json:"v"`
+	Type     string      `json:"type"`
+	SourceID string      `json:"source_id"`
+	URI      string      `json:"uri"`
+	CacheDir string      `json:"cache_dir,omitempty"`
+	From     string      `json:"from"`
+	To       string      `json:"to"`
+	Options  DiffOptions `json:"options,omitempty"`
+}
+
+// DiffChange is one changed path between two snapshots.
+type DiffChange struct {
+	Kind         string `json:"kind"`
+	Path         string `json:"path"`
+	PreviousPath string `json:"previous_path,omitempty"`
+	Binary       bool   `json:"binary,omitempty"`
+	Patch        string `json:"patch,omitempty"`
+}
+
+// DiffResponse is one snapshot comparison reply.
+type DiffResponse struct {
+	V         string       `json:"v"`
+	Type      string       `json:"type"`
+	From      string       `json:"from"`
+	To        string       `json:"to"`
+	Truncated bool         `json:"truncated,omitempty"`
+	Changes   []DiffChange `json:"changes"`
+}
